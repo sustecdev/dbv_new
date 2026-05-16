@@ -1,0 +1,92 @@
+# ==========================================
+# DBV Bridge - Apache Configuration
+# ==========================================
+
+# Enable rewrite engine
+RewriteEngine On
+
+# ==========================================
+# Security: Protect Sensitive Files
+# ==========================================
+
+# Block access to .env and config files
+<FilesMatch "^(\.env|env\.example|config\.php)$">
+    Require all denied
+</FilesMatch>
+
+# Alternative method: Block via RewriteRule (more compatible)
+RewriteCond %{REQUEST_URI} (\.env|env\.example|config\.php)$
+RewriteRule . - [F,L]
+
+# Block access to sensitive directories
+RewriteRule ^(app/Config|\.git|node_modules|database|logs)/ - [F,L]
+
+# Block access to hidden files (except .htaccess and .well-known)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteCond %{REQUEST_URI} !^/\.well-known
+RewriteCond %{REQUEST_URI} !\.htaccess$
+RewriteRule ^(.*/)?\..*$ - [F,L]
+
+# ==========================================
+# Directory Access Rules
+# ==========================================
+
+# Allow direct access to dbv-admin-panel (phpMyAdmin)
+# Works for both /dbv-admin-panel and /dbnew/dbv-admin-panel
+RewriteCond %{REQUEST_URI} ^(/dbnew)?/dbv-admin-panel
+RewriteRule ^ - [L]
+
+# If we're already in public/ directory (DocumentRoot is public/), allow direct access
+RewriteCond %{REQUEST_URI} ^/public/
+RewriteRule ^ - [L]
+
+# Allow direct access to files in public/ directory (subdirectory deployments)
+RewriteCond %{REQUEST_URI} ^/dbnew/public/
+RewriteRule ^ - [L]
+
+# Allow direct access if the physical file exists
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# ==========================================
+# URL Rewriting
+# ==========================================
+
+# Rewrite everything else to public/ directory
+# This works whether deployed at root or in subdirectory
+RewriteRule ^(.*)$ public/$1 [L,QSA]
+
+# ==========================================
+# Security Headers (Optional - requires mod_headers)
+# ==========================================
+
+<IfModule mod_headers.c>
+    # Prevent MIME type sniffing
+    Header set X-Content-Type-Options "nosniff"
+    
+    # Enable XSS protection
+    Header set X-XSS-Protection "1; mode=block"
+    
+    # Prevent clickjacking
+    Header set X-Frame-Options "SAMEORIGIN"
+    
+    # Referrer policy
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Remove server signature (optional)
+    # Header unset Server
+    # Header unset X-Powered-By
+</IfModule>
+
+# ==========================================
+# Basic Security Settings
+# ==========================================
+
+# Prevent directory listing
+Options -Indexes
+
+# Disable server signature
+ServerSignature Off
+
+# Note: FollowSymLinks should be enabled in server config if needed
+# Options +FollowSymLinks  # Removed - not allowed in .htaccess on this server

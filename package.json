@@ -1,0 +1,26 @@
+{
+  "name": "dbv-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "DBV Bridge node workers and utilities",
+  "scripts": {
+    "withdraw-worker": "node -r dotenv/config scripts/node/withdrawal_to_stellar.js",
+    "withdraw-binance": "node -r dotenv/config scripts/node/withdrawal_to_binance.js",
+    "withdraw-ethereum": "node -r dotenv/config scripts/node/withdrawal_to_ethereum.js",
+    "run-all": "concurrently \"npm:withdraw-worker\" \"npm:withdraw-binance\" \"npm:withdraw-ethereum\""
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^13.1.0",
+    "axios": "^1.7.7",
+    "cacheable-lookup": "^7.0.0"
+  },
+  "optionalDependencies": {
+    "ethers": "^6.15.0",
+    "web3": "^4.16.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "dotenv": "^17.3.1"
+  }
+}

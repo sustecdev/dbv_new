@@ -1,0 +1,63 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Add server to known hosts
+      run: |
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+
+    - name: Debug connection
+      run: |
+        ssh -o ConnectTimeout=10 ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "echo 'Connection successful'"
+
+    - name: Deploy to Production Server
+      env:
+        SSH_HOST: ${{ secrets.SSH_HOST }}
+        SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+      run: |
+        set -e
+        ssh -o StrictHostKeyChecking=no $SSH_USERNAME@$SSH_HOST "
+          set -e
+          cd /var/www/digitalbenefits.exchange/public_html
+          git fetch origin
+          git reset --hard origin/main
+          
+          if [ -f \"composer.json\" ]; then
+            composer install --no-dev --optimize-autoloader --no-interaction
+          fi
+          
+          find . -type f -exec chmod 644 {} \;
+          find . -type d -exec chmod 755 {} \;
+          [ -d \"uploads\" ] && chmod -R 775 uploads/
+          [ -d \"cache\" ] && chmod -R 775 cache/
+          
+          echo '🚀 Deployment completed successfully!'
+        "
+
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ '${{ job.status }}' = 'success' ]; then
+          echo '🚀 Deployment successful to  https://digitalbenefits.exchange'
+        else
+          echo '❌ Deployment failed - check logs above'
+          exit 1
+        fi

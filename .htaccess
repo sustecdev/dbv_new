@@ -1,0 +1,41 @@
+RewriteEngine On
+
+# Security: Block direct access to .env and sensitive config (prevents URL access)
+RewriteRule ^(.*/)?\.env(\..*)?$ - [F,L]
+RewriteRule ^env\.example$ - [F,L]
+RewriteRule ^app/Config/config\.php$ - [F,L]
+
+# Remove /public/ from URL if present
+RewriteCond %{REQUEST_URI} ^/public/(.*)$
+RewriteRule ^public/(.*)$ /$1 [R=301,L]
+
+# Redirect /landing or /landing.php to root
+RewriteRule ^landing\.php$ / [R=301,L]
+RewriteRule ^landing/?$ / [R=301,L]
+
+# Admin panel - direct route
+RewriteRule ^admin/?$ public/admin.php [L]
+
+# Dashboard - direct route  
+RewriteRule ^dashboard/?$ public/dashboard.php [L]
+
+# SafeZone auth
+RewriteRule ^safezone/?$ public/safezone.php [L]
+RewriteRule ^auth/?$ public/auth.php [L]
+
+# API routes
+RewriteRule ^api/(.*)$ public/api/$1 [L]
+
+# Landing page (root) - use landing.php
+RewriteRule ^$ public/landing.php [L]
+
+# Static files (css, js, images) - serve directly from public
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_URI} \.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$
+RewriteRule ^(.*)$ public/$1 [L]
+
+# All other requests - route through public directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/public/
+RewriteRule ^(.*)$ public/$1 [L]
