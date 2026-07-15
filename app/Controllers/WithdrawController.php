@@ -216,7 +216,7 @@ class WithdrawController
         }
 
         // Per-user cap (includes pending, processing, and completed withdrawals across all networks)
-        $perUserCap = $this->cfg['withdrawal']['per_user_cap'] ?? 5000000;
+        $perUserCap = $this->cfg['withdrawal']['per_user_cap'] ?? 0;
         if ($perUserCap > 0) {
             // Check total withdrawals across all networks (stellar, binance, ethereum)
             $stmt = $this->pdo->prepare('

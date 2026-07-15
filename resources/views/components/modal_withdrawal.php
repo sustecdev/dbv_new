@@ -55,10 +55,9 @@
                 <input type="hidden" id="csrf-token" value="<?php echo htmlspecialchars($csrfToken ?? '', ENT_QUOTES, 'UTF-8'); ?>" />
                 <div>
                     <label class="block text-sm text-gray-300 font-medium mb-2">Withdrawal Amount</label>
-                    <input id="wdl-amount" type="number" step="0.01" min="0.01" max="5000000" class="w-full bg-black border border-gray-800 rounded-lg px-4 py-3 text-lg text-white focus:outline-none focus:border-gray-700 focus:ring-1 focus:ring-gray-700" placeholder="0.00" />
+                    <input id="wdl-amount" type="number" step="0.01" min="0.01" class="w-full bg-black border border-gray-800 rounded-lg px-4 py-3 text-lg text-white focus:outline-none focus:border-gray-700 focus:ring-1 focus:ring-gray-700" placeholder="0.00" />
                     <div class="mt-1 flex justify-between text-xs">
                         <span class="text-gray-400">Minimum: 0.01 DBV</span>
-                        <span class="text-gray-400">Maximum: 5,000,000 DBV</span>
                     </div>
                 </div>
                 <div>

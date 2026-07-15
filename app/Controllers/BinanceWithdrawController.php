@@ -92,8 +92,8 @@ class BinanceWithdrawController
         }
         
         // Input validation
-        if ($amount <= 0 || $amount > 5000000) {
-            echo json_encode(['success' => false, 'message' => 'Invalid amount. Must be between 0.01 and 5,000,000 DBV']);
+        if ($amount <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid amount. Must be greater than 0']);
             return;
         }
         
@@ -211,7 +211,7 @@ class BinanceWithdrawController
         }
         
         // Per-user cap (includes pending, processing, and completed withdrawals across all networks)
-        $perUserCap = $this->cfg['withdrawal']['per_user_cap'] ?? 5000000;
+        $perUserCap = $this->cfg['withdrawal']['per_user_cap'] ?? 0;
         if ($perUserCap > 0) {
             // Check total withdrawals across all networks (stellar, binance, ethereum)
             $stmt = $this->pdo->prepare('

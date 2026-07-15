@@ -154,7 +154,7 @@ $config = [
         'api_url' => envv('SAFEIDENT_API_URL', 'https://safeident.com/verify_status_api.php'),
         'api_key' => envv('SAFEIDENT_API_KEY', ''), // REQUIRED, set in .env
         'cache_duration' => (int)envv('SAFEIDENT_CACHE_DURATION', 300), // 5 minutes
-        'verification_required' => filter_var(envv('SAFEIDENT_VERIFICATION_REQUIRED', 'true'), FILTER_VALIDATE_BOOLEAN),
+        'verification_required' => filter_var(envv('SAFEIDENT_VERIFICATION_REQUIRED', 'false'), FILTER_VALIDATE_BOOLEAN),
         'whitelist_enabled' => filter_var(envv('SAFEIDENT_WHITELIST_ENABLED', 'true'), FILTER_VALIDATE_BOOLEAN),
         'whitelisted_uids' => array_unique(array_merge(
             // No default whitelisted UIDs - all users must verify through SafeIdent
@@ -174,9 +174,12 @@ $config = [
         'referral_commission_usdd' => (float)envv('REFERRAL_COMMISSION_USDD', '0.50'), // Commission to referrer from fee when referred user withdraws
         'daily_limit_stellar' => (float)envv('STELLAR_DAILY_WITHDRAWAL_LIMIT', '0'), // Daily withdrawal limit for Stellar (0 = unlimited)
         // UIDs exempt from daily per-network withdrawal limits (Stellar/BSC/Ethereum). Comma-separated, e.g. "1001,1290033"
-        'daily_limit_bypass_uids' => array_values(array_filter(array_map('intval', array_map('trim', explode(',', envv('WITHDRAWAL_DAILY_LIMIT_BYPASS_UIDS', ''))))), function ($id) {
-            return $id > 0;
-        }),
+        'daily_limit_bypass_uids' => array_values(array_filter(
+            array_map('intval', array_map('trim', explode(',', envv('WITHDRAWAL_DAILY_LIMIT_BYPASS_UIDS', '')))),
+            function ($id) {
+                return $id > 0;
+            }
+        )),
         'per_user_cap' => (float)envv('WITHDRAWAL_PER_USER_CAP', '0'), // Maximum total withdrawals per user across all networks (0 = unlimited)
         'manual_withdraw_enabled' => envv('MANUAL_WITHDRAW_ENABLED', 'false') === 'true', // Overridden by app_settings if table exists; when true, withdrawals stay pending for admin to process
         'blocked_addresses' => $blockedWithdrawalAddresses,

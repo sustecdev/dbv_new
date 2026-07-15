@@ -15,8 +15,6 @@ class Validator
             $errors['amount'] = 'Amount must be a valid number';
         } elseif ($amount <= 0) {
             $errors['amount'] = 'Amount must be greater than 0';
-        } elseif ($amount > 5000000) {
-            $errors['amount'] = 'Amount exceeds maximum limit of 5,000,000 DBV';
         }
         
         // Address validation

@@ -1032,24 +1032,43 @@
             return s;
         }
 
+        /** Normalize 0x / 0X hex addresses for EVM (ethers tolerates lowercase; avoids mixed-prefix bugs in logs/UI). */
+        function normalizeHexAddress(addr) {
+            if (!addr || typeof addr !== 'string') return '';
+            return addr.trim().replace(/^0X/i, '0x').toLowerCase();
+        }
+
         async function executeEvmTransferWithParams(signer, tx, paramsData, onProgress, opts) {
             const apiBase = apiUrl('/api/admin/');
             const amountWei = paramsData.amount_wei;
-            const toAddress = (paramsData.to_address || '').replace(/^0X/i, '0x').toLowerCase();
-            if (!/^0x[0-9a-f]{40}$/i.test(toAddress)) {
+            const toAddress = normalizeHexAddress(paramsData.to_address || '');
+            if (!/^0x[0-9a-f]{40}$/.test(toAddress)) {
                 return { success: false, error: 'Invalid Ethereum/BSC address format' };
             }
             const chainId = parseInt(paramsData.chain_id, 10);
-            const currentChain = await signer.provider.getNetwork();
-            const currentChainId = parseInt(currentChain.chainId, 10);
-            if (currentChainId !== chainId) {
+            let currentChainId;
+            try {
+                const currentChain = await signer.provider.getNetwork();
+                currentChainId = parseInt(currentChain.chainId, 10);
+            } catch (netErr) {
                 return {
                     success: false,
-                    error: 'RPC network mismatch (chain ' + currentChainId + ', expected ' + chainId + '). Check RPC URL in server config for ' + (tx.network || 'network') + '.'
+                    error: 'Could not read chain from provider (' + (netErr && netErr.message ? netErr.message : 'unknown') + '). For browser wallet: switch to chain ID ' + chainId + ' manually or retry. For private-key mode: check ETH/BSC RPC URL in .env (browser may block RPC due to CORS).'
                 };
             }
+            if (currentChainId !== chainId) {
+                const pkFlow = opts && opts.privateKeyFlow;
+                const msg = pkFlow
+                    ? ('RPC reports chain ' + currentChainId + ' but withdrawal needs ' + chainId + '. Fix ETH_RPC_URL / BSC_RPC_URL in .env for this network.')
+                    : ('Wallet is on chain ' + currentChainId + '; switch to chain ' + chainId + ' (Ethereum/BSC) and retry.');
+                return { success: false, error: msg };
+            }
+            const tokenAddr = normalizeHexAddress(paramsData.token_contract || '');
+            if (!/^0x[0-9a-f]{40}$/.test(tokenAddr)) {
+                return { success: false, error: 'Invalid token contract address in server config' };
+            }
             const abiTransfer = ['function transfer(address to, uint256 amount) returns (bool)', 'function balanceOf(address owner) view returns (uint256)'];
-            const contractWithSigner = new ethers.Contract(paramsData.token_contract, abiTransfer, signer);
+            const contractWithSigner = new ethers.Contract(tokenAddr, abiTransfer, signer);
             const balance = await contractWithSigner.balanceOf(await signer.getAddress());
             if (balance.lt(amountWei)) {
                 return { success: false, error: 'Insufficient balance. Need ' + ethers.utils.formatUnits(amountWei, 18) + ' tokens.' };
@@ -1081,16 +1100,23 @@
                 return { success: false, error: paramsData.message || 'Failed to get transaction parameters' };
             }
             const chainId = parseInt(paramsData.chain_id, 10);
-            const currentChain = await walletSigner.provider.getNetwork();
-            if (parseInt(currentChain.chainId, 10) !== chainId) {
-                if (onProgress) onProgress('Switching network...');
+            const targetHex = '0x' + chainId.toString(16);
+            let onCorrectChain = false;
+            try {
+                const n = await walletSigner.provider.getNetwork();
+                onCorrectChain = parseInt(n.chainId, 10) === chainId;
+            } catch (e) {
+                onCorrectChain = false;
+            }
+            if (!onCorrectChain) {
+                if (onProgress) onProgress('Switching network (chain ' + chainId + ')...');
                 try {
                     const rawProvider = walletRawProvider || window.ethereum;
-                    await rawProvider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x' + chainId.toString(16) }] });
+                    await rawProvider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: targetHex }] });
                     walletProvider = new ethers.providers.Web3Provider(rawProvider);
                     walletSigner = await walletProvider.getSigner();
                 } catch (switchErr) {
-                    return { success: false, error: 'Please switch your wallet to the correct network (Chain ID: ' + chainId + ')' };
+                    return { success: false, error: 'Please switch your wallet to the correct network (Chain ID: ' + chainId + '). If the network is missing, add it to MetaMask first.' };
                 }
             }
             return executeEvmTransferWithParams(walletSigner, tx, paramsData, onProgress, { privateKeyFlow: false });
@@ -1356,7 +1382,12 @@
                         cancelBtn.onclick = () => bulkCloseModal(modal, cancelBtn);
                         return;
                     }
-                    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+                    const pkChainId = parseInt(paramsData.chain_id, 10);
+                    // StaticJsonRpcProvider avoids flaky eth_chainId detection (noNetwork); browser still needs a CORS-friendly RPC URL
+                    const provider = new ethers.providers.StaticJsonRpcProvider(
+                        { url: rpcUrl, timeout: 120000 },
+                        pkChainId
+                    );
                     const signer = baseWallet.connect(provider);
                     progressDetail.textContent = (i + 1) + ' of ' + total + ' • ' + parseFloat(tx.amount || 0).toFixed(2) + ' DBV to ' + (tx.address || '').slice(0, 10) + '...';
                     const result = await executeEvmTransferWithParams(signer, tx, paramsData, (msg) => { progressDetail.textContent = msg; }, { privateKeyFlow: true });
